@@ -42,15 +42,15 @@ app.post('/api/register', async (req, res) => {
         await client.connect();
         const document = req.body; // Get data from the POST request body
         const newUser = await hashUserPw(document);
-        console.log('new user', newUser);
+
 
         const findUser = await collectionName.findOne({ username: newUser.username });
-
+        console.log('new user', findUser);
         if (findUser) {
-            return res.status(400).json({ userexist: true, message: 'User already exists' });
+            return res.status(409).json({ userexist: true, message: 'User already exists, please log in' });
         } else {
             const result = await collectionName.insertOne(newUser);
-            return res.status(201).json({ message: "Document inserted", result: result });
+            return res.status(201).json({ message: "User Registerd Succesfully", insertId: result.insertedId });
         }
 
 
@@ -84,8 +84,11 @@ app.post('/api/login', async (req, res) => {
     try {
         await client.connect();
         const document = req.body; // Get data from the POST request body
-        const findUser = await collectionName.findOne({ username: document.username });
+        if (!document.username || !document.password) {
+            return res.status(400).json({ message: 'Invalid username or password' });
+        }
 
+        const findUser = await collectionName.findOne({ username: document.username });
         const isPasswordValid = await bcrypt.compare(document.password, findUser.password);
         if (findUser && isPasswordValid) {
 
@@ -108,6 +111,24 @@ app.post('/api/login', async (req, res) => {
     }
 
 
+});
+
+app.get('/api/getallexpenses', async (req, res) => {
+    //remove this
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+
+    try {
+        await client.connect();
+
+        const expenses = await dbconnect.find().toArray();
+
+        res.status(200).json(expenses);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Internal Server Error');
+    } finally {
+        await client.close();
+    }
 });
 
 
@@ -148,11 +169,11 @@ app.post('/api/addexpense', async (req, res) => {
     }
 });
 
-app.delete('/api/deleteexpense', async (req, res) => {
+app.delete('/api/deleteexpense/:id', async (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'DELETE');
     try {
         await client.connect();
-        const id = req.body;
+        const id = req.params.id;
         console.log(id);
         const result = await dbconnect.deleteOne({ _id: new ObjectId(id) });
         console.log(result);
@@ -180,6 +201,44 @@ app.patch('/api/editexpense', async (req, res) => {
         res.status(500).json({ message: "Error updating document" });
     } finally {
         await client.close();
+    }
+});
+
+app.get('/api/getexpense/:id', async (req, res) => {
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    try {
+        await client.connect();
+        const id = req.params.id;
+        const expense = await dbconnect.findOne({ _id: new ObjectId(id) });
+        res.status(200).json(expense);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error getting document" });
+    } finally {
+        await client.close();
+    }
+});
+
+app.get('/api/fuck', async (req, res) => {
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    try {
+        const wtf = (n) => {
+            let counter = n;
+
+            return () => {
+                return counter++
+            }
+        }
+
+        const n = wtf(2)
+        console.log(n)
+
+        res.status(200);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error getting document" });
+    } finally {
+        console.log('cmonson')
     }
 });
 
